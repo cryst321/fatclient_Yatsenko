@@ -1,62 +1,129 @@
 const Animal = require('../models/animal');
 const { validationResult } = require('express-validator');
+const asyncHandler = require('express-async-handler');
+
 
 class AnimalController {
-    async create(req, res, next) {
-        try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array() });
+
+    // CREATE
+    create = asyncHandler(async (req, res) => {
+        const newAnimal = await Animal.create(req.body);
+        res.status(201).json(newAnimal);
+    });
+
+    // READ - Всі тварини
+    getAll = asyncHandler(async (req, res) => {
+        const animals = await Animal.find();
+        res.status(200).json(animals);
+    });
+
+    // READ - За айді
+    getOne = asyncHandler(async (req, res) => {
+        const animal = await Animal.findById(req.params.id);
+        if (!animal) {
+            res.status(404).json({ message: 'Тварину не знайдено.' });
+            return;
+        }
+        res.status(200).json(animal);
+    });
+
+
+
+    // UPDATE
+    update = asyncHandler(async (req, res) => {
+        const { name, gender, species, breed, age, description, size, putForAdoption } = req.body;
+        await Animal.findByIdAndUpdate(req.params.id, { name, gender, species, breed, age, description, size,putForAdoption});
+        res.json({ message: 'Тварину успішно оновлено.' });
+    });
+
+
+    // DELETE
+    delete = asyncHandler(async (req, res) => {
+        await Animal.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Тварину успішно видалено.' });
+    });
+
+    //Випадкова тварина
+    getRandomAnimal = asyncHandler(async (req, res) => {
+        const count = await Animal.countDocuments();
+        const randomIndex = Math.floor(Math.random() * count);
+        const randomAnimal = await Animal.findOne().skip(randomIndex);
+        res.status(200).json(randomAnimal);
+    });
+
+
+    //Пошук за іменем
+    searchAnimals = asyncHandler(async (req, res) => {
+        const query = req.query.q;
+        const animals = await Animal.find({ name: { $regex: query, $options: 'i' } });
+        res.status(200).json(animals);
+    });
+
+
+    //Фільтрація тварин за: стать, розмір, вид, вік
+    filterAnimals = asyncHandler(async (req, res) => {
+        let filter = {};
+
+        if (req.query.gender) {
+            filter.gender = req.query.gender;
+        }
+
+        if (req.query.size) {
+            filter.size = req.query.size;
+        }
+
+        if (req.query.species) {
+            filter.species = req.query.species;
+        }
+
+
+        if (req.query.ageMin) {
+            const ageMin = parseInt(req.query.ageMin);
+            if (!isNaN(ageMin)) {
+                filter.age = { ...filter.age, $gte: ageMin };
             }
-
-            const { name, species, breed, size, age } = req.body;
-            const newAnimal = new Animal({ name, species, breed, size, age });
-            await newAnimal.save();
-            res.status(201).json({ message: 'Animal created successfully', animal: newAnimal });
-        } catch (error) {
-            next(error);
         }
-    }
 
-    async getAll(req, res, next) {
-        try {
-            const animals = await Animal.find();
-            res.json(animals);
-        } catch (error) {
-            next(error);
-        }
-    }
-
-    async getOne(req, res, next) {
-        try {
-            const animal = await Animal.findById(req.params.id);
-            if (!animal) {
-                return res.status(404).json({ message: 'Animal not found' });
+        if (req.query.ageMax) {
+            const ageMax = parseInt(req.query.ageMax);
+            if (!isNaN(ageMax)) {
+                filter.age = { ...filter.age, $lte: ageMax };
             }
-            res.json(animal);
-        } catch (error) {
-            next(error);
         }
-    }
 
-    async update(req, res, next) {
-        try {
-            const { name, species, breed, size, age } = req.body;
-            await Animal.findByIdAndUpdate(req.params.id, { name, species, breed, size, age });
-            res.json({ message: 'Animal updated successfully' });
-        } catch (error) {
-            next(error);
+        if (req.query.forAdoption !== undefined) {
+            filter.putForAdoption = req.query.forAdoption === 'true';
         }
-    }
 
-    async delete(req, res, next) {
-        try {
-            await Animal.findByIdAndDelete(req.params.id);
-            res.json({ message: 'Animal deleted successfully' });
-        } catch (error) {
-            next(error);
-        }
-    }
+
+        const animals = await Animal.find(filter);
+        res.status(200).json(animals);
+    });
+
+
+//Статистика притулку
+    getStatistics = asyncHandler(async (req, res) => {
+        const totalAnimals = await Animal.countDocuments();
+
+        const totalDogs = await Animal.countDocuments({ species: 'dog' });
+        const totalCats = await Animal.countDocuments({ species: 'cat' });
+
+        const oldestAnimal = await Animal.findOne().sort({ age: -1 });
+
+        const totalAdopted = await Animal.countDocuments({ putForAdoption: true });
+        const adoptionPercentage = (totalAdopted / totalAnimals) * 100;
+
+        res.status(200).json({
+            totalAnimals,
+            totalDogs,
+            totalCats,
+            oldestAge: oldestAnimal ? oldestAnimal.age : null,
+            adoptionPercentage
+        });
+    });
+
+
+
 }
 
 module.exports = AnimalController;

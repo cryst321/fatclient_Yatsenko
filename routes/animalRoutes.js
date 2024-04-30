@@ -5,17 +5,28 @@ const AnimalController = require('../controllers/controller');
 const animalController = new AnimalController();
 
 // CREATE
-router.post('/animals', animalController.create);
+router.post('/', animalController.create);
 
 // READ
-router.get('/animals', animalController.getAll);
-router.get('/animals/:id', animalController.getOne);
+router.get('/', animalController.getAll);
+// Випадкова тварина в притулку
+router.get('/random', animalController.getRandomAnimal);
+// Додаткова бізнес-логіка
+// Фільтрування за параметрами
+router.get('/filter', animalController.filterAnimals);
+// Пошук тварини за іменем
+router.get('/search', animalController.searchAnimals);
+// Статистика по тваринам в притулку
+router.get('/statistics', animalController.getStatistics);
+router.get('/:id', animalController.getOne);
+
 
 // UPDATE
-router.put('/animals/:id', animalController.update);
-router.put('/animals/:id/adopt', animalController.markAdopted);
+router.put('/:id', animalController.update);
 
 // DELETE
-router.delete('/animals/:id', animalController.delete);
+router.delete('/:id', animalController.delete);
+
+
 
 module.exports = router;

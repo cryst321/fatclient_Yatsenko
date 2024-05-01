@@ -3,11 +3,13 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const app = express();
 const path = require('path');
+const cors = require('cors');
 
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
 
 
+app.use(cors());
 
 app.use(express.json());
 
